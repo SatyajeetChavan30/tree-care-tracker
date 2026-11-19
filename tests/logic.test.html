@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Logic tests · Tree Care Tracker</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { margin: 0; padding: 24px 16px; font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: Canvas; color: CanvasText; }
+    main { max-width: 820px; margin: 0 auto; }
+    h1 { margin: 0 0 4px; font-size: 24px; }
+    #summary { margin: 0 0 20px; font-weight: 700; font-size: 18px; }
+    #summary.pass { color: #11735a; }
+    #summary.fail { color: #b3261e; }
+    ol { padding-left: 1.6em; }
+    li { margin: 6px 0; }
+    li.pass::marker { color: #11735a; }
+    .result { font-weight: 700; }
+    .pass .result { color: #11735a; }
+    .fail .result { color: #b3261e; }
+    .why { display: block; font-family: ui-monospace, Consolas, monospace; font-size: 14px; color: #b3261e; overflow-wrap: anywhere; }
+    p.hint { color: GrayText; font-size: 14px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Tree Care Tracker: logic tests</h1>
+  <p class="hint">Checks the rules in <code>js/logic.js</code> and the sample data in <code>js/samples.js</code>.
+    Open this page through a local server (not by double-clicking the file), for example
+    <code>http://127.0.0.1:5500/tests/logic.test.html</code> with VS Code Live Server.</p>
+  <p id="summary">Running…</p>
+  <ol id="results"></ol>
+</main>
+
+<script type="module">
+  import * as logic from "../js/logic.js";
+  import { buildSampleData } from "../js/samples.js";
+
+  // ---------- a very small test runner ----------
+  const results = [];
+
+  function test(name, check) {
+    try {
+      check();
+      results.push({ name, ok: true });
+    } catch (error) {
+      results.push({ name, ok: false, why: error.message });
+    }
+  }
+
+  function equal(actual, expected, what = "value") {
+    const a = JSON.stringify(actual);
+    const e = JSON.stringify(expected);
+    if (a !== e) throw new Error(`${what}: expected ${e}, got ${a}`);
+  }
+
+  // ---------- helpers that build test records ----------
+  let nextId = 1;
+  function tree(changes = {}) {
+    return { id: "t1", num: 1, code: "T-001", species: "Neem", spot: "Gate", plantedOn: "2026-11-01",
+      plantedBy: "", notes: "", sample: false, ...changes };
+  }
+  function visit(changes = {}) {
+    const date = changes.date || "2026-11-05";
+    return { id: "v" + nextId++, treeId: "t1", date, at: date + "T07:00:00.000Z", watered: true,
+      health: "healthy", volunteer: "", note: "", sample: false, ...changes };
+  }
+
+  // ---------- dates ----------
+  test("daysBetween counts whole days, across months and years", () => {
+    equal(logic.daysBetween("2026-11-15", "2026-11-18"), 3);
+    equal(logic.daysBetween("2026-12-30", "2027-01-02"), 3);
+    equal(logic.daysBetween("2026-11-18", "2026-11-18"), 0);
+  });
+
+  test("addDays moves dates forward and back", () => {
+    equal(logic.addDays("2026-02-27", 2), "2026-03-01");
+    equal(logic.addDays("2026-01-01", -1), "2025-12-31");
+    equal(logic.addDays("2028-02-28", 1), "2028-02-29", "leap year");
+  });
+
+  test("isDateString accepts real YYYY-MM-DD dates only", () => {
+    equal(logic.isDateString("2026-11-18"), true);
+    equal(logic.isDateString("2026-02-31"), false, "impossible date");
+    equal(logic.isDateString("18-11-2026"), false, "wrong order");
+    equal(logic.isDateString(20261118), false, "a number");
+  });
+
+  test("toDateString uses the local date", () => {
+    equal(logic.toDateString(new Date(2026, 0, 5)), "2026-01-05");
+  });
+
+  // ---------- IDs ----------
+  test("treeCode pads to three digits", () => {
+    equal(logic.treeCode(1), "T-001");
+    equal(logic.treeCode(42), "T-042");
+    equal(logic.treeCode(1234), "T-1234");
+  });
+
+  test("nextTreeNumber is one more than the highest number in use", () => {
+    equal(logic.nextTreeNumber([]), 1, "empty tracker");
+    equal(logic.nextTreeNumber([{ num: 1 }, { num: 5 }, { num: 2 }]), 6);
+  });
+
+  test("parseTreeCode reads IDs typed or scanned in different ways", () => {
+    equal(logic.parseTreeCode("T-007"), 7);
+    equal(logic.parseTreeCode("t7"), 7);
+    equal(logic.parseTreeCode("T007"), 7);
+    equal(logic.parseTreeCode("overview"), null);
+    equal(logic.parseTreeCode("T-"), null);
+  });
+
+  // ---------- health ----------
+  test("health is 'healthy' when a sapling has no visits", () => {
+    equal(logic.healthOf([]), "healthy");
+  });
+
+  test("health comes from the latest visit by date, whatever the list order", () => {
+    const older = visit({ date: "2026-11-05", health: "stressed" });
+    const newer = visit({ date: "2026-11-10", health: "healthy" });
+    equal(logic.healthOf([older, newer]), "healthy");
+    equal(logic.healthOf([newer, older]), "healthy");
+  });
+
+  test("on the same date, the visit saved last decides the health", () => {
+    const morning = visit({ date: "2026-11-10", at: "2026-11-10T02:00:00.000Z", health: "healthy" });
+    const evening = visit({ date: "2026-11-10", at: "2026-11-10T12:00:00.000Z", health: "dead" });
+    equal(logic.healthOf([evening, morning]), "dead");
+    equal(logic.healthOf([morning, evening]), "dead");
+  });
+
+  // ---------- last watered ----------
+  test("last watered is the planting date when there are no visits", () => {
+    equal(logic.lastWateredOn(tree({ plantedOn: "2026-11-01" }), []), "2026-11-01");
+  });
+
+  test("last watered is the latest watered visit, ignoring 'not watered' visits", () => {
+    const visits = [
+      visit({ date: "2026-11-05", watered: true }),
+      visit({ date: "2026-11-09", watered: false }),
+      visit({ date: "2026-11-07", watered: true }),
+    ];
+    equal(logic.lastWateredOn(tree(), visits), "2026-11-07");
+  });
+
+  test("a watered visit dated before planting does not move 'last watered' back", () => {
+    equal(logic.lastWateredOn(tree({ plantedOn: "2026-11-01" }), [visit({ date: "2026-10-20" })]), "2026-11-01");
+  });
+
+  // ---------- needs water ----------
+  test("needs water after 3 or more days without water", () => {
+    const visits = [visit({ date: "2026-11-10" })];
+    equal(logic.needsWater(tree(), visits, "2026-11-12"), false, "2 days");
+    equal(logic.needsWater(tree(), visits, "2026-11-13"), true, "3 days");
+    equal(logic.needsWater(tree(), visits, "2026-11-20"), true, "10 days");
+  });
+
+  test("planting counts as the first watering", () => {
+    const planted = tree({ plantedOn: "2026-11-15" });
+    equal(logic.needsWater(planted, [], "2026-11-15"), false, "planted today");
+    equal(logic.needsWater(planted, [], "2026-11-18"), true, "planted 3 days ago");
+  });
+
+  test("a dead sapling never needs water", () => {
+    const visits = [visit({ date: "2026-11-01", watered: false, health: "dead" })];
+    equal(logic.needsWater(tree(), visits, "2026-11-30"), false);
+  });
+
+  test("daysSinceWatered counts from the last watering", () => {
+    equal(logic.daysSinceWatered(tree(), [visit({ date: "2026-11-10" })], "2026-11-14"), 4);
+  });
+
+  // ---------- survival rate ----------
+  test("survival rate = alive ÷ planted × 100, one decimal place", () => {
+    equal(logic.survivalRate(12, 11), 91.7);
+    equal(logic.formatPercent(logic.survivalRate(12, 11)), "91.7%");
+    equal(logic.formatPercent(logic.survivalRate(3, 3)), "100.0%");
+    equal(logic.formatPercent(logic.survivalRate(3, 1)), "33.3%");
+  });
+
+  test("survival rate is empty (null) when nothing is planted", () => {
+    equal(logic.survivalRate(0, 0), null);
+    equal(logic.formatPercent(null), "—");
+  });
+
+  test("the 60% benchmark is checked on the rounded rate", () => {
+    equal(logic.meetsBenchmark(logic.survivalRate(5, 3)), true, "exactly 60%");
+    equal(logic.meetsBenchmark(logic.survivalRate(1667, 1000)), true, "59.99% shows as 60.0%");
+    equal(logic.meetsBenchmark(logic.survivalRate(10, 5)), false, "50%");
+    equal(logic.meetsBenchmark(null), false, "nothing planted");
+  });
+
+  // ---------- cleaning untrusted data ----------
+  test("cleanTree rejects rows without an id and tidies the rest", () => {
+    equal(logic.cleanTree({ num: 1 }), null);
+    const cleaned = logic.cleanTree({ id: "x", num: "4", species: "  Neem  ", plantedOn: "not a date" });
+    equal(cleaned.num, 4);
+    equal(cleaned.code, "T-004");
+    equal(cleaned.species, "Neem");
+    equal(cleaned.plantedOn, "");
+    equal(cleaned.sample, false);
+  });
+
+  test("cleanVisit only accepts known health values and a real true for watered", () => {
+    const cleaned = logic.cleanVisit({ id: "v", treeId: "t", date: "2026-11-01", health: "great", watered: "yes" });
+    equal(cleaned.health, "healthy");
+    equal(cleaned.watered, false);
+    equal(logic.cleanVisit({ id: "v", treeId: "t", date: "yesterday" }), null);
+  });
+
+  test("cleanSettings fills defaults and reads old prototype backups", () => {
+    equal(logic.cleanSettings(undefined), { ...logic.DEFAULT_SETTINGS });
+    equal(logic.cleanSettings({ name: "Green Lohegaon", site: "", target: "50" }),
+      { projectName: "Green Lohegaon", site: logic.DEFAULT_SETTINGS.site, target: 50 });
+    equal(logic.cleanSettings({ target: "abc" }).target, 0);
+    equal(logic.cleanSettings({ target: 999999 }).target, 100000);
+  });
+
+  test("cleanData drops repeated IDs and visits of missing saplings", () => {
+    const data = logic.cleanData({
+      trees: [tree(), tree({ species: "Duplicate" })],
+      visits: [visit(), visit({ treeId: "gone" })],
+    });
+    equal(data.trees.length, 1);
+    equal(data.trees[0].species, "Neem");
+    equal(data.visits.length, 1);
+  });
+
+  // ---------- summary ----------
+  test("an empty tracker has no survival rate and starts at T-001", () => {
+    const summary = logic.summarize({ trees: [], visits: [], settings: logic.DEFAULT_SETTINGS }, "2026-11-18");
+    equal(summary.planted, 0);
+    equal(summary.survivalRate, null);
+    equal(summary.nextCode, "T-001");
+  });
+
+  test("'visits in the last 7 days' means today and the 6 days before", () => {
+    const visits = [
+      visit({ date: "2026-11-18" }),
+      visit({ date: "2026-11-12" }),
+      visit({ date: "2026-11-11" }), // 7 days ago: not counted
+    ];
+    const summary = logic.summarize({ trees: [tree()], visits }, "2026-11-18");
+    equal(summary.visitsLast7Days, 2);
+  });
+
+  test("recent visits are the 6 newest", () => {
+    const visits = [];
+    for (let day = 1; day <= 9; day += 1) visits.push(visit({ date: `2026-11-0${day}` }));
+    const summary = logic.summarize({ trees: [tree()], visits }, "2026-11-18");
+    equal(summary.recentVisits.length, 6);
+    equal(summary.recentVisits[0].date, "2026-11-09");
+    equal(summary.recentVisits[5].date, "2026-11-04");
+  });
+
+  // ---------- sample data ----------
+  const today = "2026-11-18";
+  const sample = buildSampleData(today);
+  const sampleSummary = logic.summarize({ ...sample, settings: logic.DEFAULT_SETTINGS }, today);
+
+  test("sample data has 12 saplings and 25 visits, all marked sample", () => {
+    equal(sample.trees.length, 12);
+    equal(sample.visits.length, 25);
+    equal(sample.trees.every((row) => row.sample === true), true, "saplings marked");
+    equal(sample.visits.every((row) => row.sample === true), true, "visits marked");
+  });
+
+  test("the latest sample visit is yesterday", () => {
+    const latest = sample.visits.map((row) => row.date).sort().at(-1);
+    equal(latest, logic.addDays(today, -1));
+  });
+
+  test("sample data: 11 of 12 alive (91.7%), 4 need water, 2 stressed, 1 dead", () => {
+    equal(sampleSummary.planted, 12);
+    equal(sampleSummary.alive, 11);
+    equal(logic.formatPercent(sampleSummary.survivalRate), "91.7%");
+    equal(sampleSummary.needWater.map((row) => row.code).sort(), ["T-004", "T-008", "T-009", "T-012"]);
+    equal(sampleSummary.stressed, 2);
+    equal(sampleSummary.dead, 1);
+    equal(sampleSummary.meetsBenchmark, true);
+    equal(sampleSummary.nextCode, "T-013");
+  });
+
+  test("sample data looks the same whatever today's date is", () => {
+    for (const day of ["2027-03-01", "2028-03-01", "2030-12-31"]) {
+      const data = buildSampleData(day);
+      const summary = logic.summarize({ ...data, settings: logic.DEFAULT_SETTINGS }, day);
+      equal([summary.needWater.length, summary.stressed, summary.dead], [4, 2, 1], day);
+    }
+  });
+
+  // ---------- CSV ----------
+  test("CSV cells with commas, quotes or line breaks are quoted", () => {
+    equal(logic.csvCell("plain"), "plain");
+    equal(logic.csvCell("Gate, left side"), '"Gate, left side"');
+    equal(logic.csvCell('say "hi"'), '"say ""hi"""');
+    equal(logic.csvCell("two\nlines"), '"two\nlines"');
+    equal(logic.csvCell(null), "");
+  });
+
+  test("CSV has a header, one row per sapling and the totals", () => {
+    const csv = logic.buildCsv(sampleSummary);
+    const lines = csv.replace(/^﻿/, "").trim().split("\r\n");
+    equal(csv.startsWith("﻿"), true, "starts with a byte-order mark");
+    equal(lines[0].split(",")[0], "ID");
+    equal(lines[1].split(",")[0], "T-001");
+    equal(lines.length, 1 + 12 + 1 + 3, "header + 12 saplings + blank line + 3 totals");
+    equal(lines.at(-1), "Survival rate (%),91.7");
+  });
+
+  // ---------- show the results ----------
+  const passed = results.filter((result) => result.ok).length;
+  const failed = results.length - passed;
+  const summaryLine = document.getElementById("summary");
+  summaryLine.textContent = failed === 0
+    ? `All ${passed} tests passed.`
+    : `${failed} of ${results.length} tests failed.`;
+  summaryLine.className = failed === 0 ? "pass" : "fail";
+  document.title = (failed === 0 ? "PASS" : "FAIL") + " · Logic tests";
+
+  const list = document.getElementById("results");
+  for (const result of results) {
+    const item = document.createElement("li");
+    item.className = result.ok ? "pass" : "fail";
+    const mark = document.createElement("span");
+    mark.className = "result";
+    mark.textContent = result.ok ? "✓ " : "✗ ";
+    item.append(mark, result.name);
+    if (!result.ok) {
+      const why = document.createElement("span");
+      why.className = "why";
+      why.textContent = result.why;
+      item.append(why);
+    }
+    list.append(item);
+  }
+
+  // Lets automated checks read the results.
+  window.testResults = { passed, failed, results };
+</script>
+</body>
+</html>

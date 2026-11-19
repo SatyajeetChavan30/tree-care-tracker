@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Tree Care Tracker</title>
+  <meta name="description" content="Record, water and monitor the saplings of the Soil Protection and Plantation project. Works offline.">
+  <meta name="theme-color" content="#1c5a3a">
+  <meta name="color-scheme" content="light dark">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="icons/icon-192.png" type="image/png" sizes="192x192">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/styles.css">
+  <!-- type="module" lets the JavaScript files import each other. Modules also run after the page is read. -->
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<!-- Icons, drawn once and reused with <use href="#i-name">. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-overview" viewBox="0 0 24 24"><path d="M4 20h16M7 16v-5M12 16V6M17 16v-8"/></symbol>
+  <symbol id="i-trees" viewBox="0 0 24 24"><path d="M3.5 11.6V4.5a1 1 0 0 1 1-1h7.1l9 9-8.1 8.1z"/><circle cx="8" cy="8" r="1.6"/></symbol>
+  <symbol id="i-add" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/></symbol>
+  <symbol id="i-qr" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="14" y="3.5" width="6.5" height="6.5" rx="1"/><rect x="3.5" y="14" width="6.5" height="6.5" rx="1"/><path d="M14 14h3v3h-3zM20.5 14v.01M14 20.5h.01M17 20.5h3.5V17"/></symbol>
+  <symbol id="i-guide" viewBox="0 0 24 24"><path d="M5 5.5a2 2 0 0 1 2-2h11.5v14H7a2 2 0 0 0-2 2z"/><path d="M5 19.5a2 2 0 0 0 2 2h11.5v-4"/><path d="M9 7.5h6"/></symbol>
+  <symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 3.5c3 3.6 6 7.3 6 10.5a6 6 0 0 1-12 0c0-3.2 3-6.9 6-10.5z"/></symbol>
+  <symbol id="i-nowater" viewBox="0 0 24 24"><path d="M12 3.5c3 3.6 6 7.3 6 10.5a6 6 0 0 1-12 0c0-3.2 3-6.9 6-10.5z"/><path d="M4 4l16 16"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4.2 21 19.5H3z"/><path d="M12 10v4.2M12 17.1v.2"/></symbol>
+  <symbol id="i-dead" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9 9l6 6M15 9l-6 6"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></symbol>
+  <symbol id="i-sprout" viewBox="0 0 24 24"><path d="M12 20.5v-7.5"/><path d="M12 13c0-4.4 3-7.5 8-7.5 0 4.4-3 7.5-8 7.5z"/><path d="M12 15.5c0-3.4-2.4-6-6.5-6 0 3.4 2.4 6 6.5 6z"/><path d="M7 20.5h10"/></symbol>
+  <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V3.5h10V9"/><rect x="3.5" y="9" width="17" height="8" rx="2"/><path d="M7 14h10v6.5H7z"/></symbol>
+  <symbol id="i-theme" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor"/></symbol>
+</svg>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <rect width="48" height="48" rx="11"/>
+        <path d="M23.25 33.3v-9"/>
+        <path class="leaf" d="M23.25 24.3c0-5.6 3.7-9.6 9.8-9.6 0 5.6-3.7 9.6-9.8 9.6z"/>
+        <path class="leaf" d="M23.25 27.3c0-4.4-3.1-7.6-8.3-7.6 0 4.4 3.1 7.6 8.3 7.6z"/>
+        <path d="M16.75 33.3h13"/>
+      </svg>
+      <div>
+        <h1 class="wordmark">Tree Care Tracker</h1>
+        <p class="site" id="siteLine">Soil Protection and Plantation · Charholi (Bk), Lohegaon, Pune</p>
+      </div>
+    </div>
+    <button class="btn btn-ghost btn-sm theme-btn" type="button" data-action="theme" id="themeButton">
+      <svg class="ic" aria-hidden="true"><use href="#i-theme"/></svg><span class="theme-label" id="themeLabel">Theme: Auto</span>
+    </button>
+    <nav class="tabs" aria-label="Sections">
+      <div class="tabs-inner">
+        <button class="tab" type="button" data-action="tab" data-tab="overview"><svg class="ic" aria-hidden="true"><use href="#i-overview"/></svg><span>Overview</span></button>
+        <button class="tab" type="button" data-action="tab" data-tab="trees"><svg class="ic" aria-hidden="true"><use href="#i-trees"/></svg><span>Saplings</span></button>
+        <button class="tab" type="button" data-action="tab" data-tab="add"><svg class="ic" aria-hidden="true"><use href="#i-add"/></svg><span class="long">Add sapling</span><span class="short">Add</span></button>
+        <button class="tab" type="button" data-action="tab" data-tab="labels"><svg class="ic" aria-hidden="true"><use href="#i-qr"/></svg><span class="long">QR labels</span><span class="short">Labels</span></button>
+        <button class="tab" type="button" data-action="tab" data-tab="guide"><svg class="ic" aria-hidden="true"><use href="#i-guide"/></svg><span>Guide</span></button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Shown while sample data is loaded. -->
+  <div class="banner" id="sampleBanner" hidden>
+    <p id="sampleText"></p>
+    <button class="btn btn-ghost btn-sm" type="button" data-action="remove-samples">Remove sample data</button>
+  </div>
+
+  <!-- Messages that need more than a few seconds to read (filled in by ui.js). -->
+  <div class="banner banner-info" id="notice" role="status" hidden></div>
+
+  <main id="main" tabindex="-1">
+    <!-- ===================== Overview ===================== -->
+    <section class="view ov" id="view-overview" aria-label="Overview">
+      <div class="ov-col">
+        <article class="panel hero o1" id="heroPanel" aria-label="Survival rate"></article>
+        <article class="panel o3">
+          <div class="panel-head"><h2>Needs water</h2><span class="hint">3 or more days without water</span></div>
+          <ul class="water-list" id="waterList"></ul>
+        </article>
+        <article class="panel o5">
+          <div class="panel-head"><h2>Recent visits</h2><button class="linklike" type="button" data-action="tab" data-tab="trees">All saplings</button></div>
+          <ol class="recent-list" id="recentList"></ol>
+        </article>
+      </div>
+      <div class="ov-col">
+        <div class="kpis o2" id="kpis"></div>
+        <article class="panel o4">
+          <div class="panel-head"><h2>Sapling health</h2><span class="hint">From each sapling’s latest visit</span></div>
+          <div class="health" id="healthBody"></div>
+        </article>
+        <article class="panel o6">
+          <div class="panel-head"><h2>Species planted</h2><span class="hint" id="speciesHint"></span></div>
+          <div id="speciesBody"></div>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================== Saplings ===================== -->
+    <section class="view trees" id="view-trees" aria-label="Saplings" hidden>
+      <div class="toolbar">
+        <div class="search">
+          <svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>
+          <label class="sr-only" for="treeSearch">Search saplings</label>
+          <input class="input" id="treeSearch" type="search" placeholder="Search ID, species or spot" autocomplete="off">
+        </div>
+        <div class="filters" role="group" aria-label="Show">
+          <button class="filter-btn" type="button" data-action="filter" data-filter="all" aria-pressed="true">All <span class="count">0</span></button>
+          <button class="filter-btn" type="button" data-action="filter" data-filter="water" aria-pressed="false">Needs water <span class="count">0</span></button>
+          <button class="filter-btn" type="button" data-action="filter" data-filter="stressed" aria-pressed="false">Stressed <span class="count">0</span></button>
+          <button class="filter-btn" type="button" data-action="filter" data-filter="dead" aria-pressed="false">Dead <span class="count">0</span></button>
+        </div>
+      </div>
+      <div class="tree-grid" id="treeGrid"></div>
+    </section>
+
+    <!-- ===================== Add sapling ===================== -->
+    <section class="view" id="view-add" aria-label="Add sapling" hidden>
+      <div class="add-grid">
+        <article class="panel">
+          <div class="panel-head"><h2>Add a sapling</h2></div>
+          <div class="next-id">
+            <span class="tag-id" id="nextId">T-001</span>
+            <p>This sapling gets the next ID. Write it on the label tied to its tree guard.</p>
+          </div>
+          <form class="form" id="addForm" novalidate>
+            <div class="field">
+              <label for="add-species">Species</label>
+              <select class="input" id="add-species" required></select>
+            </div>
+            <div class="field" id="add-other-wrap" hidden>
+              <label for="add-other">Species name</label>
+              <input class="input" id="add-other" type="text" maxlength="60" autocomplete="off" placeholder="e.g. Banyan">
+            </div>
+            <div class="field">
+              <label for="add-spot">Planting spot</label>
+              <input class="input" id="add-spot" type="text" required maxlength="140" autocomplete="off" placeholder="e.g. North boundary wall, pit 3">
+            </div>
+            <div class="row2">
+              <div class="field">
+                <label for="add-date">Planted on</label>
+                <input class="input" id="add-date" type="date" required>
+              </div>
+              <div class="field">
+                <label for="add-by">Planted by <span class="opt">optional</span></label>
+                <input class="input" id="add-by" type="text" maxlength="60" placeholder="Name or group" autocomplete="off">
+              </div>
+            </div>
+            <div class="field">
+              <label for="add-notes">Notes <span class="opt">optional</span></label>
+              <textarea class="input" id="add-notes" rows="2" maxlength="400" placeholder="Soil, guard, mulch, anything to remember"></textarea>
+            </div>
+            <div><button class="btn btn-primary" type="submit"><svg class="ic" aria-hidden="true"><use href="#i-add"/></svg>Add sapling</button></div>
+          </form>
+        </article>
+        <aside class="panel" aria-labelledby="checklistTitle">
+          <div class="panel-head"><h2 id="checklistTitle">Planting checklist</h2></div>
+          <ul class="checks">
+            <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span><b>Pit 60 × 60 × 60 cm</b>, with the topsoil kept aside</span></li>
+            <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>About <b>3 m</b> from the next sapling, clear of walls, pipes and wires</span></li>
+            <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>Topsoil mixed with <b>compost or FYM</b> and a little <b>neem cake</b></span></li>
+            <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>Root ball intact, <b>collar at ground level</b>, soil firmed</span></li>
+            <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>Bamboo <b>stake</b> with soft ties, and a <b>tree guard</b></span></li>
+            <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>Saucer basin about <b>1 m</b> across, <b>5–8 cm</b> of dry-leaf mulch</span></li>
+            <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span><b>Watered</b> right after planting</span></li>
+          </ul>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ===================== QR labels ===================== -->
+    <section class="view labels-view" id="view-labels" aria-label="QR labels" hidden>
+      <article class="panel labels-intro">
+        <div class="panel-head"><h2>QR labels</h2><span class="hint" id="labelsCount"></span></div>
+        <p>Print the labels, cover each one with clear tape and tie it to the sapling’s tree guard. Scanning a label with a phone camera opens that sapling, so a volunteer can log a visit straight away.</p>
+        <p class="link-line">Labels open: <code id="labelsBase"></code></p>
+        <p class="warn-note" id="labelsWarning" hidden></p>
+        <div class="btn-row">
+          <button class="btn btn-primary" type="button" data-action="print-labels" id="printLabels"><svg class="ic" aria-hidden="true"><use href="#i-print"/></svg>Print labels</button>
+        </div>
+        <p class="hint">A4 paper, 12 labels per page. In the print window keep the scale at 100% (not “Fit to page”).</p>
+      </article>
+      <div class="label-sheet" id="labelSheet"></div>
+    </section>
+
+    <!-- ===================== Guide ===================== -->
+    <section class="view guide" id="view-guide" aria-label="Guide" hidden>
+      <article class="panel">
+        <div class="panel-head"><h2>How to plant a sapling</h2><span class="hint">At the start of the monsoon</span></div>
+        <ol class="steps">
+          <li><div><b>Mark the spot</b><p>About 3 m apart, away from walls, pipes and overhead wires.</p></div></li>
+          <li><div><b>Dig the pit</b><p>60 cm × 60 cm × 60 cm. Keep the topsoil separate.</p></div></li>
+          <li><div><b>Fill the pit</b><p>Topsoil mixed with farmyard manure (FYM) or compost and a little neem cake against termites.</p></div></li>
+          <li><div><b>Plant</b><p>Remove the polybag without breaking the root ball. Set the sapling upright at collar level.</p></div></li>
+          <li><div><b>Firm the soil</b><p>Press the soil around the root ball to remove air pockets.</p></div></li>
+          <li><div><b>Stake and guard</b><p>A bamboo stake with soft ties, and a tree guard against grazing.</p></div></li>
+          <li><div><b>Basin and mulch</b><p>A saucer basin about 1 m across with a raised rim, covered with 5–8 cm of dry leaves.</p></div></li>
+          <li><div><b>Water</b><p>Water right away, then regularly. Saplings need care for about three years.</p></div></li>
+        </ol>
+      </article>
+      <div class="col">
+        <article class="panel">
+          <div class="panel-head"><h2>How the tracker works</h2></div>
+          <ul class="rules">
+            <li><svg class="ic" aria-hidden="true"><use href="#i-trees"/></svg><span>Every sapling gets an ID in order: <code>T-001</code>, <code>T-002</code> and so on. Write it on the label tied to the tree guard.</span></li>
+            <li><svg class="ic" aria-hidden="true"><use href="#i-drop"/></svg><span>A sapling <b>needs water</b> when nobody has watered it for 3 days. Planting counts as its first watering.</span></li>
+            <li><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg><span>Its health comes from the <b>latest visit</b>: Healthy, Stressed or Dead.</span></li>
+            <li><svg class="ic" aria-hidden="true"><use href="#i-overview"/></svg><span><b>Survival rate (%)</b> = saplings alive ÷ saplings planted × 100. The Forest Department counts 60% or more as a success.</span></li>
+            <li><svg class="ic" aria-hidden="true"><use href="#i-qr"/></svg><span>Each QR label holds the tracker’s link with the sapling’s ID at the end, like <code>#T-003</code>. Scanning it opens that sapling.</span></li>
+          </ul>
+        </article>
+        <article class="panel">
+          <div class="panel-head"><h2>Protect the soil around it</h2></div>
+          <ul class="measures">
+            <li><b>Mulching</b><p>Dry leaves and straw absorb raindrop impact, keep the soil moist and add organic matter.</p></li>
+            <li><b>Half-moon bunds</b><p>Crescent-shaped bunds on the downhill side trap runoff and silt on slopes.</p></li>
+            <li><b>Vegetative strips</b><p>Grass and vetiver slips across slopes and drain edges slow runoff and hold the soil.</p></li>
+            <li><b>Composting</b><p>Compost fallen leaves instead of burning them, and return them to the saplings.</p></li>
+            <li><b>Protection</b><p>Guards, stones or a living fence of thorny Karvand stop trampling and vehicle damage.</p></li>
+          </ul>
+        </article>
+      </div>
+      <article class="panel span-2">
+        <div class="panel-head"><h2>Project phases</h2><span class="hint">This tracker covers phase 6</span></div>
+        <ol class="phases">
+          <li><b>Area survey</b><p>Meet residents; note bare patches, erosion and planting spots.</p></li>
+          <li><b>Planning</b><p>Fix sites, species, tools, compost, water and permissions.</p></li>
+          <li><b>Awareness</b><p>Talks, posters and door-to-door visits; families adopt a sapling.</p></li>
+          <li><b>Plantation drive</b><p>Plant, stake, guard and water each sapling.</p></li>
+          <li><b>Soil protection</b><p>Mulch, saucer basins, grass strips and composting.</p></li>
+          <li class="is-here"><b>Monitoring</b><p>Log watering and health; follow the survival rate.</p><span class="here">This app</span></li>
+        </ol>
+      </article>
+      <article class="panel">
+        <div class="panel-head"><h2>Native species</h2><span class="hint">Suited to Pune’s soil and rainfall</span></div>
+        <div class="table-wrap">
+          <table class="species-table">
+            <thead><tr><th scope="col">Local name</th><th scope="col">Botanical name</th><th scope="col">Why we plant it</th></tr></thead>
+            <tbody id="speciesTable"></tbody>
+          </table>
+        </div>
+      </article>
+      <article class="panel settings" id="settingsPanel">
+        <div class="panel-head"><h2>Project details</h2></div>
+        <form class="form" id="settingsForm" novalidate>
+          <div class="field">
+            <label for="settings-name">Project name</label>
+            <input class="input" id="settings-name" type="text" maxlength="80" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="settings-site">Site</label>
+            <input class="input" id="settings-site" type="text" maxlength="120" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="settings-target">Target number of saplings <span class="opt">optional</span></label>
+            <input class="input" id="settings-target" type="number" min="0" max="100000" step="1" inputmode="numeric" placeholder="e.g. 50">
+          </div>
+          <div><button class="btn btn-primary" type="submit">Save details</button></div>
+        </form>
+
+        <div class="sub-block">
+          <div class="field">
+            <label for="device-name">Your name on this device <span class="opt">optional</span></label>
+            <input class="input" id="device-name" type="text" maxlength="60" placeholder="Name or group" autocomplete="off">
+          </div>
+          <p>Filled in for you when you log a visit. It is saved in this browser only.</p>
+        </div>
+
+        <div class="sub-block" id="dataTools">
+          <h3>Your data</h3>
+          <p>Everything you enter is saved in this browser, on this device. Download a backup to keep a safe copy, or to move the record to another phone and restore it there. Restoring replaces what is on this device.</p>
+          <div class="btn-row">
+            <button class="btn btn-ghost btn-sm" type="button" data-action="backup">Download backup (.json)</button>
+            <label class="btn btn-ghost btn-sm file-btn" for="restoreFile">Restore backup</label>
+            <input id="restoreFile" class="sr-only" type="file" accept="application/json,.json">
+            <button class="btn btn-ghost btn-sm" type="button" data-action="csv">Download sapling list (.csv)</button>
+            <button class="btn btn-ghost btn-sm" type="button" data-action="load-samples" id="loadSamplesGuide">Load sample data</button>
+          </div>
+        </div>
+
+        <div class="sub-block" id="sampleTools" hidden>
+          <p>Sample saplings and visits are marked <span class="badge-sample">Sample</span>. Remove them before you record your own plantation.</p>
+          <div><button class="btn btn-danger btn-sm" type="button" data-action="remove-samples">Remove sample data</button></div>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <p class="foot">Working model for the CEP-241-COM project report on Plantation and Soil Protection (Section 4.7, Monitoring and Digital Tree-Care Tracker).</p>
+</div>
+
+<!-- ===================== One sapling (opens over the page) ===================== -->
+<dialog id="treeDialog" aria-labelledby="detailTitle">
+  <div class="sheet">
+    <header class="detail-head">
+      <div class="detail-tag"><span class="tag-id" id="detailId">T-000</span></div>
+      <div class="detail-titles"><h2 id="detailTitle">Sapling</h2><p id="detailSpot"></p></div>
+      <button class="icon-btn" type="button" data-action="close-dialog" aria-label="Close"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button>
+    </header>
+    <div class="chips" id="detailStatus"></div>
+    <dl class="facts" id="detailFacts"></dl>
+
+    <section class="block log-box" aria-labelledby="logTitle">
+      <h3 id="logTitle">Log a visit</h3>
+      <form class="form" id="visitForm" novalidate>
+        <fieldset class="pill-group">
+          <legend>Watered?</legend>
+          <div class="pill-options">
+            <label class="pill p-water"><input type="radio" name="watered" value="yes" checked><span><svg class="ic" aria-hidden="true"><use href="#i-drop"/></svg>Watered</span></label>
+            <label class="pill p-none"><input type="radio" name="watered" value="no"><span><svg class="ic" aria-hidden="true"><use href="#i-nowater"/></svg>Not watered</span></label>
+          </div>
+        </fieldset>
+        <fieldset class="pill-group">
+          <legend>Health</legend>
+          <div class="pill-options">
+            <label class="pill p-healthy"><input type="radio" name="health" value="healthy" checked><span><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>Healthy</span></label>
+            <label class="pill p-stressed"><input type="radio" name="health" value="stressed"><span><svg class="ic" aria-hidden="true"><use href="#i-alert"/></svg>Stressed</span></label>
+            <label class="pill p-dead"><input type="radio" name="health" value="dead"><span><svg class="ic" aria-hidden="true"><use href="#i-dead"/></svg>Dead</span></label>
+          </div>
+        </fieldset>
+        <div class="row2">
+          <div class="field">
+            <label for="visit-date">Date</label>
+            <input class="input" id="visit-date" type="date" required>
+          </div>
+          <div class="field">
+            <label for="visit-by">Volunteer <span class="opt">optional</span></label>
+            <input class="input" id="visit-by" type="text" maxlength="60" placeholder="Name or group" autocomplete="off">
+          </div>
+        </div>
+        <div class="field">
+          <label for="visit-note">Note <span class="opt">optional</span></label>
+          <input class="input" id="visit-note" type="text" maxlength="300" placeholder="e.g. Mulch topped up, guard fixed" autocomplete="off">
+        </div>
+        <div><button class="btn btn-primary" type="submit">Save visit</button></div>
+      </form>
+    </section>
+
+    <section class="block" id="editBox" aria-labelledby="editTitle" hidden>
+      <h3 id="editTitle">Edit details</h3>
+      <form class="form" id="editForm" novalidate>
+        <div class="field">
+          <label for="edit-species">Species</label>
+          <select class="input" id="edit-species" required></select>
+        </div>
+        <div class="field" id="edit-other-wrap" hidden>
+          <label for="edit-other">Species name</label>
+          <input class="input" id="edit-other" type="text" maxlength="60" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="edit-spot">Planting spot</label>
+          <input class="input" id="edit-spot" type="text" required maxlength="140" autocomplete="off">
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label for="edit-date">Planted on</label>
+            <input class="input" id="edit-date" type="date" required>
+          </div>
+          <div class="field">
+            <label for="edit-by">Planted by <span class="opt">optional</span></label>
+            <input class="input" id="edit-by" type="text" maxlength="60" autocomplete="off">
+          </div>
+        </div>
+        <div class="field">
+          <label for="edit-notes">Notes <span class="opt">optional</span></label>
+          <textarea class="input" id="edit-notes" rows="2" maxlength="400"></textarea>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" type="submit">Save changes</button>
+          <button class="btn btn-ghost" type="button" data-action="cancel-edit">Cancel</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="block" aria-labelledby="historyTitle">
+      <h3 id="historyTitle">Visit history</h3>
+      <ol class="history" id="detailHistory"></ol>
+    </section>
+
+    <footer class="detail-foot">
+      <button class="btn btn-ghost btn-sm" type="button" data-action="edit">Edit details</button>
+      <button class="btn btn-danger btn-sm" type="button" data-action="remove-tree" id="removeTreeButton">Remove sapling</button>
+    </footer>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<noscript><p class="noscript">Tree Care Tracker needs JavaScript. Please turn it on, or open this page in Chrome, Edge, Firefox or Safari.</p></noscript>
+</body>
+</html>
