@@ -4,6 +4,8 @@ A small web app for recording, watering and monitoring the saplings planted in t
 **Soil Protection and Plantation** project (CEP-241-COM, Charholi (Bk), Lohegaon, Pune).
 It is the working model for the project report.
 
+**Live site:** https://satyajeetchavan30.github.io/tree-care-tracker/
+
 - Every sapling gets an ID (`T-001`, `T-002`, …) that goes on a label tied to its tree guard.
 - Volunteers log visits: watered or not, and health (Healthy, Stressed or Dead).
 - The Overview shows the **survival rate** against the Forest Department's **60% success benchmark**,
